@@ -1,7 +1,19 @@
-import Adafruit_PCA9685, time, pygame,math, gestionVitesse
+import Adafruit_PCA9685, time, pygame,math
 import numpy as np
 from escInitThread import *
 import threading
+def scale(x, in_min, in_max, out_min, out_max):
+    """
+    Equivalent de la fonction map() en arduino
+    :param x: valeur à mapper
+    :param in_min: borne inférieure d'entrée
+    :param in_max: borne supérieure d'entrée
+    :param out_min: borne inférieure de sortie
+    :param out_max: borne supérieure de sortie
+    :return:
+    """
+    return (x-in_min) * (out_max-out_min) / (in_max-in_min) + out_min
+
 class Robot:
     """
         Classe permettant de controler un robot basé sur une carte
@@ -63,17 +75,13 @@ class Robot:
             self.shield.set_pwm(s,0,4096)
             print("esc sur port {} éteint".format(s))
 
+    def calculVitesse(self, v):
+        return int(scale(v,-100,100,205,410))
+
     def minimax(self,a,mini,maxi):
         if a <= mini : return mini
         elif a >= maxi : return maxi
         else : return a
-
-
-
-    #def set_moteurs(self):
-            #for i in range(self.nbServos) :
-                #self.initialiser_esc(i)
-                #print("ESC n°{0}/{1} initialisé".format(i,self.nbServos))
 
     def set_joysticks(self):
         #initialiser tous les modules de pygame
@@ -108,26 +116,20 @@ class Robot:
         y = -self.joysticks[0].get_axis(3)
         print("x={0} et y={1}".format(x,y))
         if x == 0 : alpha = math.pi/2
+        elif x < 0 :  alpha=math.atan(y/x) + math.pi
         else : alpha=math.atan(y/x)
         unscaledV = math.sqrt(x**2*math.cos(alpha)**2+y**2*math.sin(alpha)**2)
         print("unscaledV :",unscaledV)
-        #v = gestionVitesse.esc(unscaledV)
-        #print("v =",v)
 
         if (y > - self.seuil_y_std) and (y < self.seuil_y_std) : #rotation sans avancer
-            #self.set_vitesses_moteurs(self._signe(x)*v*self.rD)
-            tabV = unscaledV*self._signe(x)*self.rD
-            tabV = [list(map(gestionVitesse.esc,tabV[0])),list(map(gestionVitesse.esc,tabV[1]))]
+            tabV = acc*self._signe(x)*self.rD
+            tabV = [list(map(self.calculVitesse,tabV[0])),list(map(self.calculVitesse,tabV[1]))]
             tabV = np.array(tabV)
             self.set_vitesses_moteurs(tabV)
             print("tab =",tabV)
         else : # rotation en avançant ou reculant
-            #vg = gestionVitesse.esc((unscaledV+x/2)*self._signe(y))
-            #vd = gestionVitesse.esc((unscaledV-x/2)*self._signe(y))
-            vg = gestionVitesse.esc(self.minimax((unscaledV+x/2),0,1)*self._signe(y))
-            vd = gestionVitesse.esc(self.minimax((unscaledV-x/2),0,1)*self._signe(y))
-            # vg = gestionVitesse.esc(max(1,1.5*x)*self._signe(y))
-            # vd = gestionVitesse.esc(max(-1,x/2)*self._signe(y))
+            vg = self.calculVitesse(acc * math.cos(alpha))
+            vd = self.calculVitesse(acc * math.sin(alpha))
             print("vg = {0} et vd={1}".format(vg,vd))
             self.set_vitesses_moteurs(np.array([[vg,vd],[vg,vd]]))
 
@@ -138,9 +140,6 @@ class Robot:
             alpha = math.pi / 2
         else:
             alpha = math.atan(y / x)
-        unscaledV = math.sqrt(x ** 2 * math.cos(alpha) ** 2 + y ** 2 * math.sin(alpha) ** 2)
-        #unscaledV = math.sqrt(x**2+y**2)
-        #v = gestionVitesse.esc(unscaledV)
 
         if (y > -self.seuil_y_slide) and (y < self.seuil_y_slide) : #glissement sans avancer
             if x > 0 :
@@ -159,8 +158,8 @@ class Robot:
                 tab = self.sARG
 
         print("tab=",tab)
-        tabV = unscaledV*tab
-        tabV = [list(map(gestionVitesse.esc,tabV[0])),list(map(gestionVitesse.esc,tabV[1]))]
+        tabV = acc*tab
+        tabV = [list(map(self.calculVitesse,tabV[0])),list(map(self.calculVitesse,tabV[1]))]
         tabV = np.array(tabV)
         print("tabV=",tabV)
         self.set_vitesses_moteurs(tabV)
