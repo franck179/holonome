@@ -44,8 +44,9 @@ class Robot:
     sAVG = np.array([[1, 0],[0, 1]])
     rG = np.array([[1, -1],[1, -1]])
     rD = np.array([[1, -1],[1, -1]])
-    seuil_y_std = 0.30
-    seuil_y_slide = 0.30
+    seuil_y_std = 0.20
+    seuil_y_slide = 0.20
+    vitesseMin = 25
 
 
 
@@ -57,6 +58,7 @@ class Robot:
         self.slotsServos = slotsServos #utilité à vérifier !
         self.joysticks = []
         self.esc = []
+        self.acc = vitesseMin
         baton = threading.Lock()
         for s in self.slotsServos:
             th = escInitThread(self,s,baton)
@@ -110,6 +112,12 @@ class Robot:
             for j in range(2):
                 self.shield.set_pwm(14*i+j,0,tableau[i,j])
 
+    def setAcc(self):
+        val = self.joysticks[0].get_axis(5)
+        if val == -1 :
+            self.acc = vitesseMin
+        else :
+            self.acc = 100*val
 
     def deplacement_std(self):
         x = self.joysticks[0].get_axis(2)
@@ -122,14 +130,14 @@ class Robot:
         print("unscaledV :",unscaledV)
 
         if (y > - self.seuil_y_std) and (y < self.seuil_y_std) : #rotation sans avancer
-            tabV = acc*self._signe(x)*self.rD
+            tabV = self.acc*self._signe(x)*self.rD
             tabV = [list(map(self.calculVitesse,tabV[0])),list(map(self.calculVitesse,tabV[1]))]
             tabV = np.array(tabV)
             self.set_vitesses_moteurs(tabV)
             print("tab =",tabV)
         else : # rotation en avançant ou reculant
-            vg = self.calculVitesse(acc * math.cos(alpha))
-            vd = self.calculVitesse(acc * math.sin(alpha))
+            vg = self.calculVitesse(self.acc * math.cos(alpha))
+            vd = self.calculVitesse(self.acc * math.sin(alpha))
             print("vg = {0} et vd={1}".format(vg,vd))
             self.set_vitesses_moteurs(np.array([[vg,vd],[vg,vd]]))
 
@@ -158,7 +166,7 @@ class Robot:
                 tab = self.sARG
 
         print("tab=",tab)
-        tabV = acc*tab
+        tabV = self.acc*tab
         tabV = [list(map(self.calculVitesse,tabV[0])),list(map(self.calculVitesse,tabV[1]))]
         tabV = np.array(tabV)
         print("tabV=",tabV)
