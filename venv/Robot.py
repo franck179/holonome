@@ -84,8 +84,30 @@ class Robot:
         if a <= mini : return mini
         elif a >= maxi : return maxi
         else : return a
-
-    def set_joysticks(self):
+    
+    def config_Joystick(self,nom):
+        if nom == "REV":
+            self.stickGauche = (0,1)
+            self.stickDroit = (2,3)
+            self.gachetteGauche = 5
+            self.gachetteDroite =
+            self.croixDir =
+            self.boutonGauche =
+            self.boutonDroit =
+            self.select =10
+            return 0
+        if nom == "PS4":
+            self.stickGauche = (0,1)
+            self.stickDroit = (2,5)
+            self.gachetteGauche = 3
+            self.gachetteDroite = 4
+            self.croixDir = 0
+            self.boutonGauche = 4
+            self.boutonDroit = 6
+            self.select = 12 # à tester
+            return 1
+    
+    def set_joysticks(self,nom):
         #initialiser tous les modules de pygame
             pygame.init()
             #on peut les initialiser séparémént
@@ -100,6 +122,7 @@ class Robot:
                     self.joysticks.append(pygame.joystick.Joystick(i))
                     self.joysticks[i].init()
                     print("Le joystick n°{0} est connecté".format(i+1))
+                self.manette = self.joystick(self.config_Joystick(nom))
             else:
                 print("Aucun joystick connecté")
 
@@ -113,15 +136,18 @@ class Robot:
                 self.shield.set_pwm(14*i+j,0,tableau[i,j])
 
     def setAcc(self):
-        val = self.joysticks[0].get_axis(5)
+        #val = self.joysticks[0].get_axis(5)
+        val = self.manette.get_axis(self.gachetteGauche)
         if val == -1 :
             self.acc = vitesseMin
         else :
             self.acc = 100*val
 
     def deplacement_std(self):
-        x = self.joysticks[0].get_axis(2)
-        y = -self.joysticks[0].get_axis(3)
+        # x = self.joysticks[0].get_axis(2)
+        # y = -self.joysticks[0].get_axis(3)
+        x = self.manette.get_axis(self.stickDroit[0])
+        y = -self.manette.get_axis(self.stickDroit[1])
         print("x={0} et y={1}".format(x,y))
         if x == 0 : alpha = math.pi/2
         elif x < 0 :  alpha=math.atan(y/x) + math.pi
@@ -142,8 +168,10 @@ class Robot:
             self.set_vitesses_moteurs(np.array([[vg,vd],[vg,vd]]))
 
     def deplacement_slide(self) :
-        x = self.joysticks[0].get_axis(0)
-        y = -self.joysticks[0].get_axis(1)
+        # x = self.joysticks[0].get_axis(0)
+        # y = -self.joysticks[0].get_axis(1)
+        x = self.manette.get_axis(self.stickGauche[0])
+        y = -self.manette.get_axis(self.stickGauche[1])
         if x == 0:
             alpha = math.pi / 2
         else:
@@ -171,6 +199,9 @@ class Robot:
         tabV = np.array(tabV)
         print("tabV=",tabV)
         self.set_vitesses_moteurs(tabV)
+        
+    def arret(self):
+        self.set_vitesses_moteurs([[307,307],[307,307]])
 
 
 
